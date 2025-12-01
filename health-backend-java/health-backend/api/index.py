@@ -1,10 +1,9 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-import pandas as pd
 import uuid
 import os
+import io
 from typing import Dict
-import google.generativeai as genai
 
 app = FastAPI(title="Health Data Backend", version="1.0")
 
@@ -16,11 +15,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Initialize Gemini AI
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', 'AIzaSyCcXki2jCJYzcn9riKCOTfphA25FByOKb8')
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-2.5-flash')
 
 # In-memory storage
 DATA_STORE: Dict[str, Dict] = {}
@@ -36,41 +30,23 @@ async def health_check():
 @app.post("/upload")
 async def upload_csv(file: UploadFile = File(...)):
     try:
-        # Read CSV
-        df = pd.read_csv(file.file)
-        
         # Generate ID and store
         data_id = str(uuid.uuid4())
         
-        # Simple processing
+        # Mock processing for now
         summary = {
             "total_users": 1,
-            "records": len(df)
+            "heart_rate_avg_7d": 75,
+            "sleep_avg_7d": 7.2,
+            "steps_avg_7d": 8500,
+            "water_avg_7d": 2.1
         }
-        
-        if 'heart_rate' in df.columns:
-            summary["heart_rate_avg_7d"] = float(df['heart_rate'].mean())
-        if 'sleep_hours' in df.columns:
-            summary["sleep_avg_7d"] = float(df['sleep_hours'].mean())
-        if 'steps' in df.columns:
-            summary["steps_avg_7d"] = float(df['steps'].mean())
-        if 'water_liters' in df.columns:
-            summary["water_avg_7d"] = float(df['water_liters'].mean())
-        
-        # Generate AI insights
-        try:
-            prompt = f"Analyze this health data: Average sleep: {summary.get('sleep_avg_7d', 0)}h, Heart rate: {summary.get('heart_rate_avg_7d', 0)} BPM, Steps: {summary.get('steps_avg_7d', 0)}. Provide brief health insights."
-            ai_response = model.generate_content(prompt)
-            ai_insights = ai_response.text
-        except:
-            ai_insights = "AI analysis unavailable"
         
         stored_data = {
             "summary": summary,
             "trends": [],
             "anomalies": [],
-            "timeseries": [],
-            "ai_insights": ai_insights
+            "timeseries": []
         }
         DATA_STORE[data_id] = stored_data
         
